@@ -18,6 +18,7 @@ class HeuristicScanner:
         self.suspicious_strings = ["powershell", "cmd.exe", "eval", "exec"]
         self.bad_ext = [".exe", ".bat", ".js"]
 
+
     @staticmethod
     def check_entropy(data):
         if not data:
@@ -120,6 +121,7 @@ class FileMonitor:
         self.queue = Queue()
         self.scanner = HeuristicScanner()
         self.report = ReportManager()
+        self.db_logger = DatabaseLogger()
         self.running = False
 
     def watch_folder(self):

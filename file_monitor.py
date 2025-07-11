@@ -14,6 +14,7 @@ class HeuristicScanner:
         self.suspicious_strings = ["powershell", "cmd.exe", "eval", "exec"]
         self.bad_ext = [".exe", ".bat", ".js"]
 
+
     @staticmethod
     def check_entropy(data):
         if not data:
