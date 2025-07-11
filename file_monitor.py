@@ -6,6 +6,8 @@ from queue import Queue
 from collections import Counter
 from reportlab.lib.pagesizes import letter
 from reportlab.pdfgen import canvas
+from database_logger import DatabaseLogger
+
 
 class HeuristicScanner:
     def __init__(self):
@@ -116,6 +118,7 @@ class FileMonitor:
         self.queue = Queue()
         self.scanner = HeuristicScanner()
         self.report = ReportManager()
+        self.db_logger = DatabaseLogger()
         self.running = False
 
     def watch_folder(self):
@@ -137,16 +140,31 @@ class FileMonitor:
                     print(f"New file detected and queued: {path}")
             time.sleep(2)
 
-    def process_queue(self):
-        while self.running:
-            if not self.queue.empty():
-                file_path = self.queue.get()
+    def process_queue(self): 
+     while self.running:
+        if not self.queue.empty():
+            file_path = self.queue.get()
+            try:
+                with open(file_path, 'r', errors='ignore') as f:
+                    data = f.read()
+
                 score, reasons = self.scanner.risk_score(file_path)
+                entropy = self.scanner.check_entropy(data)
+                found = self.scanner.check_strings(data)
+
+                # Insert into database
+                self.db_logger.insert_log(file_path, score, entropy, found, reasons)
+
                 log_entry = f"Scanned: {file_path} | Score: {score} | Reasons: {', '.join(reasons)}"
-                self.report.results.append(log_entry)  # log all files
-                print(log_entry)  # console output
+                self.report.results.append(log_entry)
+                print(log_entry)
+
                 if score >= 4:
                     self.report.log_result(file_path, reasons)
+
+            except Exception as e:
+                print(f"Error processing {file_path}: {e}")
+
 
     def start(self):
         self.running = True

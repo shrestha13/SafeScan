@@ -9,6 +9,7 @@ from tkinter import filedialog, messagebox
 from tkinter.scrolledtext import ScrolledText
 from reportlab.lib.pagesizes import letter
 from reportlab.pdfgen import canvas
+from database_logger import DatabaseLogger
 
 # === Backend logic classes (same as file_monitor.py) ===
 
@@ -136,15 +137,30 @@ class FileMonitor:
                     self.queue.put(path)
             time.sleep(2)
 
-    def process_queue(self):
-        while self.running:
-            if not self.queue.empty():
-                file_path = self.queue.get()
+    def process_queue(self): 
+     while self.running:
+        if not self.queue.empty():
+            file_path = self.queue.get()
+            try:
+                with open(file_path, 'r', errors='ignore') as f:
+                    data = f.read()
+
                 score, reasons = self.scanner.risk_score(file_path)
+                entropy = self.scanner.check_entropy(data)
+                found = self.scanner.check_strings(data)
+
+                # Insert into database
+                self.db_logger.insert_log(file_path, score, entropy, found, reasons)
+
                 log_entry = f"Scanned: {file_path} | Score: {score} | Reasons: {', '.join(reasons)}"
                 self.report.results.append(log_entry)
+                print(log_entry)
+
                 if score >= 4:
                     self.report.log_result(file_path, reasons)
+
+            except Exception as e:
+                print(f"Error processing {file_path}: {e}")
 
     def start(self):
         self.running = True
@@ -177,6 +193,8 @@ class FileMonitorGUI:
         tk.Button(control_frame, text="Start Monitoring", command=self.start_monitoring).pack(side=tk.LEFT, padx=10)
         tk.Button(control_frame, text="Stop Monitoring", command=self.stop_monitoring).pack(side=tk.LEFT)
         tk.Button(control_frame, text="Export Report", command=self.export_report).pack(side=tk.LEFT, padx=10)
+        tk.Button(control_frame, text="Export Logs (CSV)", command=self.export_logs_csv).pack(side=tk.LEFT, padx=10)
+
 
         tk.Label(self.root, text="Scan Logs:").pack()
         self.log_text = ScrolledText(self.root, width=80, height=20, state='disabled')
@@ -239,6 +257,25 @@ class FileMonitorGUI:
                 messagebox.showinfo("Success", msg)
             else:
                 messagebox.showerror("Error", msg)
+                
+    def export_logs_csv(self):
+     if not self.monitor or not self.monitor.db_logger:
+        messagebox.showwarning("Warning", "Monitoring must be started before exporting logs.")
+        return
+
+     export_path = filedialog.asksaveasfilename(
+        defaultextension=".csv",
+        filetypes=[("CSV Files", "*.csv")],
+        title="Save Logs As CSV"
+    )
+    
+     if export_path:
+        success, msg = self.monitor.db_logger.export_to_csv(export_path)
+        if success:
+            messagebox.showinfo("Success", msg)
+        else:
+            messagebox.showerror("Error", msg)
+
 
 
 if __name__ == "__main__":
