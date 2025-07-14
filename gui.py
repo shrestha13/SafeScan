@@ -36,7 +36,7 @@ class HeuristicScanner:
         reasons = []
         try:
             safe_path = os.path.abspath(file_path)
-            with open(safe_path, 'r', errors='ignore') as f:
+            with open(safe_path, 'rb') as f:
                 data = f.read()
 
             if os.path.splitext(safe_path)[1] in self.bad_ext:

@@ -32,7 +32,7 @@ class HeuristicScanner:
         reasons = []
         try:
             safe_path = os.path.abspath(file_path)
-            with open(safe_path, 'r', errors='ignore') as f:
+            with open(safe_path, 'rb') as f:  # binary mode, no errors param!
                 data = f.read()
 
             if os.path.splitext(safe_path)[1] in self.bad_ext:
@@ -44,10 +44,11 @@ class HeuristicScanner:
                 score += 2
                 reasons.append(f"High entropy: {entropy:.2f}")
 
-            found = self.check_strings(data)
+            found = self.check_strings(data.decode(errors='ignore'))
             if found:
                 score += 2
                 reasons.append("Suspicious strings: " + ", ".join(found))
+
         except Exception as e:
             reasons.append(f"Error scanning: {e}")
         return score, reasons
