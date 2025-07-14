@@ -74,7 +74,7 @@ class ReportManager:
     def get_results(self):
         return self.results
 
-
+   
     def export_report_pdf(self, export_path):
         try:
             c = canvas.Canvas(export_path, pagesize=letter)

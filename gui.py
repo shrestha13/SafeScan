@@ -77,17 +77,6 @@ class ReportManager:
     def get_results(self):
         return self.results
 
-    def export_report(self, export_path):
-        try:
-            with open(export_path, 'w') as file:
-                file.write("=== Smart File Behavior Analyzer Report ===\n")
-                file.write(f"Exported at: {time.strftime('%Y-%m-%d %H:%M:%S')}\n")
-                file.write("=" * 45 + "\n\n")
-                for entry in self.results:
-                    file.write(entry + "\n")
-            return True, "Report exported successfully."
-        except Exception as e:
-            return False, f"Failed to export report: {e}"
 
     def export_report_pdf(self, export_path):
         try:
