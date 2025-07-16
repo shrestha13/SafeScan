@@ -14,6 +14,7 @@ from database_logger import DatabaseLogger
 # === Backend logic classes (same as file_monitor.py) ===
 
 class HeuristicScanner:
+    ''' A class for scanning files using simple heuristic checks'''
     def __init__(self):
         self.suspicious_strings = ["powershell", "cmd.exe", "eval", "exec"]
         self.bad_ext = [".exe", ".bat", ".js"]
@@ -21,6 +22,9 @@ class HeuristicScanner:
 
     @staticmethod
     def check_entropy(data):
+        '''
+        Calculates the Shannon entropy of file content.
+        '''
         if not data:
             return 0
         counter = Counter(data)
@@ -29,25 +33,33 @@ class HeuristicScanner:
         return entropy
 
     def check_strings(self, data):
+        #check file content for suspicious string and return list of found pre-set keywords
         return [s for s in self.suspicious_strings if s in data]
 
     def risk_score(self, file_path):
+        ''' Calculate risk score based on extension, entropy, suspicius strings
+        Returns tuple: (score, list of reasons)
+        '''
         score = 0
         reasons = []
         try:
             safe_path = os.path.abspath(file_path)
+            #open file in read mode, binary
             with open(safe_path, 'rb') as f:
                 data = f.read()
 
             if os.path.splitext(safe_path)[1] in self.bad_ext:
+            #check extension 
                 score += 1
                 reasons.append("Bad file extension")
 
+            #check entropy
             entropy = self.check_entropy(data)
             if entropy > 7.5:
                 score += 2
                 reasons.append(f"High entropy: {entropy:.2f}")
-
+                
+            #check suspicious strings
             found = self.check_strings(data)
             if found:
                 score += 2
@@ -57,11 +69,13 @@ class HeuristicScanner:
         return score, reasons
 
 class ReportManager:
+    ''' Manages logging, quarantine and report export.'''
     def __init__(self):
         self.results = []
         os.makedirs("quarantine", exist_ok=True)
 
     def log_result(self, file_path, reasons):
+        '''log flagged file details and move it to quarantine '''
         timestamp = time.strftime("%Y-%m-%d %H:%M:%S")
         log = f"[{timestamp}] {file_path} flagged: {' | '.join(reasons)}"
         self.results.append(log)
@@ -74,6 +88,7 @@ class ReportManager:
         except Exception as e:
             self.results.append(f"Failed to quarantine {file_path}: {e}")
 
+    #return the list of logged scan results
     def get_results(self):
         return self.results
 
@@ -104,6 +119,7 @@ class ReportManager:
         except Exception as e:
             return False, f"Failed to export PDF report: {e}"
 
+#monitor folder, scan files, log results
 class FileMonitor:
     def __init__(self, folder):
         self.folder = folder
@@ -128,7 +144,8 @@ class FileMonitor:
                     self.queue.put(path)
             time.sleep(2)
 
-    def process_queue(self): 
+    def process_queue(self):
+        #scan files in queue, log results, update DB. 
      while self.running:
         if not self.queue.empty():
             file_path = self.queue.get()
@@ -154,6 +171,7 @@ class FileMonitor:
                 print(f"Error processing {file_path}: {e}")
 
     def start(self):
+        '''start watcher and processor threads'''
         self.running = True
         threading.Thread(target=self.watch_folder, daemon=True).start()
         threading.Thread(target=self.process_queue, daemon=True).start()
