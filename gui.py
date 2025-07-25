@@ -34,6 +34,11 @@ class HeuristicScanner:
 
     def check_strings(self, data):
         #check file content for suspicious string and return list of found pre-set keywords
+        if isinstance(data, bytes):
+            try:
+                data = data.decode(errors='ignore')
+            except:
+                return []
         return [s for s in self.suspicious_strings if s in data]
 
     def risk_score(self, file_path):
@@ -150,7 +155,7 @@ class FileMonitor:
         if not self.queue.empty():
             file_path = self.queue.get()
             try:
-                with open(file_path, 'r', errors='ignore') as f:
+                with open(file_path, 'rb') as f:
                     data = f.read()
 
                 score, reasons = self.scanner.risk_score(file_path)
